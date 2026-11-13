@@ -82,6 +82,10 @@ const AA_ZOOM_NAME = 'wocAaZoom';
 const AA_ZOOM_OUT_NAME = 'wocAaZoomOut';
 const AA_ZOOM_IN_NAME = 'wocAaZoomIn';
 const AA_CARD_NAME = 'wocAaCard';
+/* CarPlay's zoom (fork: arefahmad/idrive-apps) */
+const CP_ZOOM_NAME = 'wocCpZoom';
+const CP_ZOOM_OUT_NAME = 'wocCpZoomOut';
+const CP_ZOOM_IN_NAME = 'wocCpZoomIn';
 const GUIDE_NAME = 'wocGuide';
 const HEAD_GENERAL_NAME = 'wocHeadGeneral';
 const HEAD_HUD_NAME = 'wocHeadHud';
@@ -206,6 +210,7 @@ class WazeClusterApp extends OnlineApp {
         }
         const names = [STATUS_NAME, MAP_NAME, RESTART_STATUS_NAME, ENABLE_NAME, DISABLE_NAME, WIFI_NAME, WIFI_HINT_NAME, AA_STATUS_NAME,
             AA_ENABLE_NAME, AA_DISABLE_NAME, AA_ZOOM_NAME, AA_ZOOM_OUT_NAME, AA_ZOOM_IN_NAME, AA_CARD_NAME, RESTART_NAME, GUIDE_NAME,
+            CP_ZOOM_NAME, CP_ZOOM_OUT_NAME, CP_ZOOM_IN_NAME,
             HEAD_GENERAL_NAME, HEAD_HUD_NAME, SHOW_ON_NAME, PROFILE_NAME, HUD_NAME, HUD_KEEP_NAME, HUD_SIZE_NAME, HUD_POS_NAME]
             .concat(Object.values(HUD_MOVE_NAMES), [HUD_CENTRE_NAME, CAPTURE_NAME, CAPTURE_STATUS,
                 LOGS_NAME, LOGS_SAVE, LOGS_STATUS, LOGS_QR, LOGS_URL], LOGS_ROW_NAMES);
@@ -218,6 +223,8 @@ class WazeClusterApp extends OnlineApp {
         this._bind(DISABLE_NAME, () => this._control.disableMap());
         this._bind(AA_ENABLE_NAME, () => this._control.enableAa());
         this._bind(AA_DISABLE_NAME, () => this._control.disableAa());
+        this._bind(CP_ZOOM_OUT_NAME, () => this._control.cpZoom(1));
+        this._bind(CP_ZOOM_IN_NAME, () => this._control.cpZoom(-1));
         this._bind(AA_ZOOM_OUT_NAME, () => this._control.zoom(-ZOOM_STEP));
         this._bind(AA_ZOOM_IN_NAME, () => this._control.zoom(ZOOM_STEP));
         this._bind(AA_CARD_NAME, () => {
@@ -525,6 +532,7 @@ class WazeClusterApp extends OnlineApp {
         }
         const c = this._control;
         [[ENABLE_NAME, t('Patch')], [DISABLE_NAME, t('Remove patch')], [AA_ENABLE_NAME, t('Patch')], [AA_DISABLE_NAME, t('Remove patch')],
+            [CP_ZOOM_OUT_NAME, t('Zoom out')], [CP_ZOOM_IN_NAME, t('Zoom in')],
             [AA_ZOOM_OUT_NAME, t('Zoom out')], [AA_ZOOM_IN_NAME, t('Zoom in')], [HEAD_GENERAL_NAME, t('General')], [LOGS_NAME, t('Logs')],
             [HEAD_HUD_NAME, t('HUD')],
             [HUD_MOVE_NAMES.left, t('Move left')], [HUD_MOVE_NAMES.right, t('Move right')], [HUD_MOVE_NAMES.up, t('Move up')],
@@ -533,6 +541,7 @@ class WazeClusterApp extends OnlineApp {
         this._write(STATUS_NAME, c.statusText());
         this._write(MAP_NAME, c.mapText());
         this._write(AA_STATUS_NAME, c.aaStatusText());
+        this._write(CP_ZOOM_NAME, c.cpZoomText());
         this._write(AA_ZOOM_NAME, c.zoomText());
         this._write(AA_CARD_NAME, c.cardText());
         this._setSelected(AA_CARD_NAME, c.cardHidden());
@@ -540,6 +549,7 @@ class WazeClusterApp extends OnlineApp {
         this._write(CAPTURE_STATUS, c.captureText());
         [[ENABLE_NAME, c.canEnable()], [DISABLE_NAME, c.canDisable()],
             [AA_ENABLE_NAME, c.canEnableAa()], [AA_DISABLE_NAME, c.canDisableAa()],
+            [CP_ZOOM_OUT_NAME, c.canCpZoom(1)], [CP_ZOOM_IN_NAME, c.canCpZoom(-1)],
             [AA_ZOOM_OUT_NAME, c.canZoom(-ZOOM_STEP)], [AA_ZOOM_IN_NAME, c.canZoom(ZOOM_STEP)],
             [AA_CARD_NAME, c.canToggleCard()], [CAPTURE_NAME, c.canCapture()], [RESTART_NAME, c.canRestart()]]
             .forEach(([name, enabled]) => this._setEnabled(name, enabled));

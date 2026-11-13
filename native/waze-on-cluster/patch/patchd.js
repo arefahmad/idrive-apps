@@ -29,6 +29,9 @@
  *                  {"cmd":"revert"}
  *                  {"cmd":"aa-apply"} | {"cmd":"aa-revert"}   the Android Auto patch
  *                  {"cmd":"aa-density","value":n} | {"cmd":"aa-card","value":"shown"|"hidden"}
+ *                  {"cmd":"cp-res","value":"WxH"}  CarPlay's zoom: the size the phone is told the cluster
+ *                                   map has (one of CP_RESES, all 138x61 mm); a larger one shows more map
+ *                                   with smaller text. Saved, and with the patch on disk applied again.
  *                                   save the choice and, with the patch on disk,
  *                                   apply it (one change per DENSITY_SPACING_MS)
  *                  {"cmd":"reboot"} activate a deferred patch with a normal
@@ -177,6 +180,15 @@ var aapdConf = require('./aapd_conf.js');
 var STATE_DIR = process.env.WOC_STATE_DIR || '/var/opt/waze-on-cluster';
 var AA_DPI_FILE = path.join(STATE_DIR, 'aa-density');
 var AA_CARD_FILE = path.join(STATE_DIR, 'aa-card');
+/* CarPlay's zoom (fork: arefahmad/idrive-apps): the pixel size the CarPlay patch advertises at the map area's
+ * 138x61 mm (carplay_patch.js --res). The phone renders more map, with smaller text and turn card, at a larger
+ * size; the render keeps tex_size 1088x480, so the decoder's VPP scales each picture down on the head unit and
+ * the cluster's upload is what it was. All keep the map area's 2.267 shape, widths multiples of 4. */
+var CP_RES_FILE = path.join(STATE_DIR, 'carplay-res');
+var CP_RESES = ['1088x480', '1224x540', '1360x600', '1632x720'];
+function cpRes() {
+    try { var v = fs.readFileSync(CP_RES_FILE, 'utf8').trim(); return CP_RESES.indexOf(v) >= 0 ? v : CP_RESES[0]; } catch (e) { return CP_RESES[0]; }
+}
 /* With the turn card hidden, the crop waze-on-cluster.service passes to the
  * render (EnvironmentFile): the card's rows grow with the density. The
  * shipped waze-on-cluster.conf holds the crop for the card shown. */
@@ -897,6 +909,7 @@ function status(extra, aaExtra) {
         readAaState(function (aa) {
             var cpBusy = busy === 'carplay';
             var msg = { ev: 'status', state: cpBusy ? 'busy' : st.state, panel: st.panel, mode: st.mode, res: st.res, safe: st.safe,
+                        cpRes: cpRes(), cpReses: CP_RESES,
                         removable: !!st.restorable, busy: busy || (rebooting ? 'restart' : null), restart: restartMsg() };
             if (!cpBusy && st.reason) msg.reason = st.reason;
             if (!cpBusy && st.carplay) msg.carplay = st.carplay;
@@ -1492,6 +1505,7 @@ function patchWith(t, args, action, blocked, done, run) {
 function apply(panel, mode, noRestart, unproven, done) {
     if (panel !== 'high' && panel !== 'mid') { done(new Error('panel must be high or mid')); return; }
     var args = ['apply', '--panel', panel, '--target', TARGET, '--coding', CODING, '--yes'].concat(unproven ? ['--unproven'] : []);
+    if (panel === 'high') { args.push('--res', cpRes()); log('CarPlay zoom: advertising ' + cpRes()); }
     if (mode === 'avb') {
         log('apply IC_' + panel.toUpperCase() + ', stock AVB sink (the render joins the media bus)');
     } else if (mode === 'udp') {
@@ -1766,6 +1780,23 @@ function handle(line, sock) {
         operate('aa', 'applying', aaEnable);
     } else if (msg.cmd === 'aa-revert') {
         operate('aa', 'reverting', function (cb) { aaRevert(false, false, cb); });
+    } else if (msg.cmd === 'cp-res') {
+        var want = String(msg.value), at = Date.now();
+        if (CP_RESES.indexOf(want) < 0) { refuse('size must be one of ' + CP_RESES.join(', ')); return; }
+        if (at - lastDensityAt < DENSITY_SPACING_MS) { refuse('changed moments ago; try again in a few seconds'); return; }
+        busy = 'carplay';
+        readState(function (st) {
+            lastDensityAt = at;
+            try { saveFile(CP_RES_FILE, want + '\n'); } catch (e) { busy = null; refuse('saving the choice failed: ' + e.message); status(); quitWhenIdle(); return; }
+            log('CarPlay zoom: ' + want + ' chosen');
+            busy = null;
+            /* a patch of ours on disk gets the new size now (CarPlay restarts to load it); without one it waits for Patch */
+            if (st.state === 'patched' && st.panel === 'high') {
+                operate('carplay', 'applying', function (cb) { apply('high', st.mode === 'udp' || st.mode === 'fifo' ? st.mode : 'avb', false, true, cb); });
+                return;
+            }
+            status(); quitWhenIdle();
+        });
     } else if (msg.cmd === 'aa-density' || msg.cmd === 'aa-card') {
         var density = msg.cmd === 'aa-density', v = density ? Number(msg.value) : String(msg.value), now = Date.now();
         if ((density ? aapdConf.DENSITIES : aapdConf.CARDS).indexOf(v) < 0) {
