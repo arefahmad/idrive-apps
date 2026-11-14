@@ -2,14 +2,14 @@
 
 ## Unreleased
 
+## 0.6.8
+
 CarPlay zoom (fork arefahmad/idrive-apps): Zoom out and Zoom in under CarPlay step
 the size the phone is told the cluster map has (1088x480, 1224x540, 1360x600,
 1632x720 at the same 138x61 mm), so Apple Maps draws more map with smaller
 text and turn card. The cluster gets the same 1088x480 picture: the head
 unit's decoder scales it down. A change re-applies the patch and restarts
 CarPlay.
-
-## 0.6.8
 
 A plainer description in the Store: on supported cars the map turns on by
 itself after you install the app and restart the head unit.
