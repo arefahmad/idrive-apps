@@ -704,7 +704,7 @@ void Server::op_asset(Client &c, const cr::Json &j)
     AssetParams ap;
     int format = 0, sampling = 0, wrap = 0;
     if (!num(j, "w", 1, 2048, &w, &err) || !num(j, "h", 1, 2048, &h, &err) ||
-        !choice(j, "format", {"rgba8", "r8"}, &format, &err) ||
+        !choice(j, "format", {"rgba8", "r8", "etc2rgba", "etc2rgb"}, &format, &err) ||
         !choice(j, "sampling", {"nearest", "bilinear"}, &sampling, &err) ||
         !choice(j, "wrap", {"clamp", "repeat"}, &wrap, &err)) {
         error(c, "asset", ref, err);
@@ -716,7 +716,8 @@ void Server::op_asset(Client &c, const cr::Json &j)
     }
     ap.w = (uint32_t)w;
     ap.h = (uint32_t)h;
-    ap.format = format ? TexFormat::R8 : TexFormat::RGBA8;
+    static const TexFormat kFormats[] = {TexFormat::RGBA8, TexFormat::R8, TexFormat::ETC2RGBA, TexFormat::ETC2RGB};
+    ap.format = kFormats[format];
     ap.sampling = sampling ? Sampling::Bilinear : Sampling::Nearest;
     ap.wrap = wrap ? Wrap::Repeat : Wrap::Clamp;
     const uint32_t id = comp_->add_asset(c.id, target, ap, &err);
@@ -726,7 +727,7 @@ void Server::op_asset(Client &c, const cr::Json &j)
     }
     c.assets[ref] = id;
     log_info("client %llu (%s): asset %u on %s (%s %ux%u)", (unsigned long long)c.id, c.app.c_str(), id,
-             slots_->targets()[target].name.c_str(), format ? "r8" : "rgba8", ap.w, ap.h);
+             slots_->targets()[target].name.c_str(), tex_format_name(ap.format), ap.w, ap.h);
 }
 
 void Server::op_scene(Client &c, const cr::Json &j)
@@ -1053,10 +1054,9 @@ void Server::report(int64_t now_ms)
             if (!slots_->targets()[t].follows.empty())
                 continue;   /* a hold: no client's target */
             const TargetStatus &s = slots_->status((int)t);
-            const bool hold_off = slots_->hold_disabled((int)t), off = slots_->disabled((int)t);
             const std::string line = std::string(target_state_name(s.state)) + "\n" + holder_name(s.holder) + "\n" +
                                      s.reason + "\n" + std::to_string(s.retry_ms) + "\n" +
-                                     rendering_name(s.rendering) + "\n" + (hold_off ? "1" : "0") + (off ? "1" : "0");
+                                     rendering_name(s.rendering);
             std::string &sent = c.target_sent[slots_->targets()[t].name];
             if (line == sent)
                 continue;
@@ -1069,8 +1069,9 @@ void Server::report(int64_t now_ms)
                                      {"retry_in_ms", std::to_string(s.retry_ms >= 0 ? std::max<int64_t>(0, s.retry_ms - now_ms)
                                                                                    : -1)},
                                      {"rendering", cr::json_quote(rendering_name(s.rendering))},
-                                     {"guide_disabled", hold_off ? "1" : "0"},
-                                     {"disabled", off ? "1" : "0"}}));
+                                     /* Always 0: kept for clients that read them. */
+                                     {"guide_disabled", "0"},
+                                     {"disabled", "0"}}));
         }
         const Governor &gov = comp_->governor();
         const std::string budget = std::to_string(gov.cap()) + "\n" + gov.reason();
@@ -1132,7 +1133,8 @@ std::string Server::status_text(int64_t now_ms) const
             s += line + cv->stats() + "\n";
         }
     }
-    s += slots_->guard_text();
+    for (const std::string &d : drop_ins_)
+        s += "drop-in " + d + "\n";
     s += slots_->renderer_text(now_ms);
     s += slots_->port().status_text(now_ms);
     s += slots_->table_text();
@@ -1141,7 +1143,7 @@ std::string Server::status_text(int64_t now_ms) const
             for (const Asset *a : comp_->assets())
                 if (a->id() == kv.second) {
                     std::snprintf(line, sizeof line, "asset %u %s %ux%u of %s on %s: %s\n", a->id(),
-                                  a->params().format == TexFormat::R8 ? "r8" : "rgba8", a->params().w, a->params().h,
+                                  tex_format_name(a->params().format), a->params().w, a->params().h,
                                   c.app.c_str(), slots_->targets()[a->target()].name.c_str(), a->stats().c_str());
                     s += line;
                 }

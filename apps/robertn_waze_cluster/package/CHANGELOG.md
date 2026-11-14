@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.6.8
+
+A plainer description in the Store: on supported cars the map turns on by
+itself after you install the app and restart the head unit.
+
 ## 0.6.7
 
 CarPlay zoom (fork arefahmad/idrive-apps): Zoom out and Zoom in under CarPlay step
