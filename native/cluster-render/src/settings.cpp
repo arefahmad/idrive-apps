@@ -207,6 +207,7 @@ void define_keys(cld::Config *cfg)
     cfg->define("guide_scene_id", "0x010004f1");
     cfg->define("guide_content_class", "0");
     cfg->define("guide_take_over", "0x01000310");
+    cfg->define("guide_hide_badge", "0");
     /* iDrive 8: a target's slot is a DCSM category, its content the content
      * offered there (README.md "iDrive 8"). */
     cfg->define("id8_targets", "map,hud,guide,widget,popup");
@@ -360,6 +361,10 @@ bool load_targets(const cld::Config &cfg, int generation, std::vector<TargetSpec
                                  allowed, out, &warn);
     if (!warn.empty())
         log_warn("guide hold%s: %s", held ? "" : " off", warn.c_str());
+    if (held && cfg.str("guide_hide_badge") == "1")
+        for (TargetSpec &t : *out)
+            if (!t.follows.empty())
+                t.hide_badge = true;
     return true;
 }
 

@@ -216,6 +216,11 @@ struct TargetSpec {
      * take_over_contents mapped in (SlotManager::on_slots); slot 0 until
      * one is. */
     std::vector<uint64_t> table_slots;
+    /* A hold's (guide_hide_badge = 1): held while the target it follows is
+     * shown whether or not the box is mapped, so the KOMBI never shows the
+     * car's badge in the slot over the map; with no box reported yet, auto
+     * takes the first of table_slots the slot table reports enabled. */
+    bool hide_badge = false;
     /* The panel's (panel_fallback_scene_id; 0: none): the scene id it
      * falls back to when the display refuses its own, scene_id
      * (SlotManager::fall_back). */
