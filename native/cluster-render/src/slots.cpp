@@ -278,7 +278,7 @@ void SlotManager::follow(int64_t now_ms)
         if (mapped)
             t.box_ms = now_ms;
         /* Kept through a lock: the lock unmapped the box with ours. */
-        const bool boxed = mapped || t.kept || (t.requested && t.box_ms >= 0 && now_ms - t.box_ms < kNotMappedMs);
+        const bool boxed = mapped || specs_[i].hide_badge || t.kept || (t.requested && t.box_ms >= 0 && now_ms - t.box_ms < kNotMappedMs);
         if (boxed != t.boxed)
             log_info("target %s: %s; slot 0x%llx %s", specs_[i].name.c_str(),
                      boxed ? "the box is mapped: held while the map is shown" : "no box mapped: not held",
@@ -393,6 +393,17 @@ uint64_t SlotManager::reported_slot(int i, const std::map<uint64_t, std::vector<
         *why = b;
         return box->slot;
     }
+    /* guide_hide_badge: no box yet, the HMI's choice, the first of them reported enabled. */
+    if (specs_[i].hide_badge && !specs_[i].slot)
+        for (uint64_t id : allowed) {
+            auto r = rows.find(id);
+            if (r == rows.end() || r->second.empty() || !r->second.front().status)
+                continue;
+            std::snprintf(b, sizeof b, "the first of the box's slots the slot table reports enabled (status %u)",
+                          r->second.front().status);
+            *why = b;
+            return id;
+        }
     return 0;
 }
 

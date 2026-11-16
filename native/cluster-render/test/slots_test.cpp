@@ -1647,9 +1647,10 @@ static const uint64_t kBox = 0x01000310, kBoxAlt = 0x01000315, kBelt = 0x0100031
  * its slot from the slot table instead (guide_slots = auto). */
 struct GuideRig : Rig {
     static const int kGuide = 3;
-    explicit GuideRig(bool from_table = false)
+    explicit GuideRig(bool from_table = false, bool hide_badge = false)
     {
         TargetSpec g;
+        g.hide_badge = hide_badge;
         g.name = "guide"; g.slot = from_table ? 0 : kGuideSlot; g.scene_id = kGuideScene; g.width = g.height = 16;
         g.linger_ms = 0; g.take_over_stock = true; g.follows = "map"; g.take_over_contents = {kBox, kBoxAlt};
         if (from_table)
@@ -2918,6 +2919,29 @@ static void guide_auto_slot()
        requested_none(joined()) && x.guide_slot() == kGuideSlot && x.state(GuideRig::kGuide) == TargetState::Idle);
 }
 
+/* guide_hide_badge = 1: the hold is held while the map shows with no box
+ * (Waze, or Apple Maps before its box), so the car's badge never shows over
+ * the map; auto takes 0x105 (reported enabled) before any box. */
+static void guide_hide_badge_holds_without_box()
+{
+    for (bool from_table : {false, true}) {
+        const std::string t = from_table ? "hide badge, auto: " : "hide badge, guide_slots = 0x105: ";
+        GuideRig r(from_table, true);
+        r.slot(kGuideSlot, 1, 0);
+        r.rows(kGuideSlot, 2, {{kBelt, 3}});   /* the badge: the slot empty but for the parked seat-belt panel */
+        r.show_map();
+        joined();
+        r.pass(100);
+        ok((t + "the map shown, no box: asked for in 0x105").c_str(),
+           joined().find("request guide") != std::string::npos && r.guide_slot() == kGuideSlot);
+        r.rows(kGuideSlot, 2, {{kGuideScene, 1}, {kBelt, 3}});
+        r.m.on_shown(kGuideScene, r.now);
+        r.pass(60000);
+        ok((t + "held a minute with no box, never released").c_str(),
+           r.state(GuideRig::kGuide) == TargetState::Shown && joined().find("release guide") == std::string::npos);
+    }
+}
+
 /* The hold occupies its slot only while the box is mapped there: no box
  * (Waze, no route), no hold, the car's badge left in the slot; the box
  * mapped (a route), held and taken over; the box mapped again behind ours,
@@ -3821,6 +3845,7 @@ int main()
     guide_no_flapping();
     guide_auto_slot();
     guide_box_comes_and_goes();
+    guide_hide_badge_holds_without_box();
     hud_drops();
     panel_hud_map_together();
     panel_falls_back_on_refusal();
