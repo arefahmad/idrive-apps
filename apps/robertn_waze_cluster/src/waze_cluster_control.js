@@ -102,6 +102,18 @@ const SIZE = '1088x480';
 /* The safe area CarPlay's Patch button writes: where the phone keeps its guidance UI,
  * inside the part of the map the gauges leave visible. */
 const SAFE = '504x368+286+72';
+/* CarPlay's zoom: the sizes patchd may advertise at the map area's physical size,
+ * smallest (the native 1088x480) first; a larger one shows more map with smaller text and turn card. The safe
+ * area scales with the size (carplay_patch.js resFor). */
+const CP_SIZES = ['1088x480', '1224x540', '1360x600', '1632x720'];
+function safeFor(size) {
+    const m = /^(\d+)x(\d+)$/.exec(size || '');
+    if (!m) return SAFE;
+    const w = +m[1], h = +m[2];
+    const x0 = Math.round(286 * w / 1088), x1 = Math.round((286 + 504) * w / 1088);
+    const y0 = Math.round(72 * h / 480), y1 = Math.round((72 + 368) * h / 480);
+    return (x1 - x0) + 'x' + (y1 - y0) + '+' + x0 + '+' + y0;
+}
 /* The HUD map's size: HUD_STEP_PCT steps from HUD_MIN_PCT to HUD_MAX_PCT (85 %, the widest the HUD shows
  * whole), HUD_SIZE_STEPS of them. Standard (0) counts as HUD_STANDARD_PCT, about what the fitted box is. */
 const HUD_MIN_PCT = 30, HUD_MAX_PCT = 85, HUD_STEP_PCT = 5, HUD_STANDARD_PCT = 57;
@@ -685,8 +697,9 @@ class WazeClusterControl extends EventEmitter {
      * panel, size or safe area, from an older app, or the cluster map URL without
      * the arrival-time card. */
     _outdated(ps) {
+        const want = ps.cpRes || SIZE;
         return !!((ps.mode && ps.mode !== 'avb') || (ps.panel && ps.panel !== 'high') ||
-            (ps.res && ps.res !== SIZE) || (ps.safe && ps.safe !== SAFE) || ps.mapurl === 'no-eta');
+            (ps.res && ps.res !== want) || (ps.safe && ps.safe !== safeFor(want)) || ps.mapurl === 'no-eta');
     }
 
     /* ---- BMW's turn box ---- */
@@ -749,6 +762,32 @@ class WazeClusterControl extends EventEmitter {
             return false;
         }
         return aa.removable !== undefined ? aa.removable : this._aaIdle() && ['patched', 'unknown', 'error'].includes(aa.state);
+    }
+
+    /* CarPlay's zoom: the advertised size patchd keeps (cpRes), stepped through CP_SIZES; out = larger. */
+    _cpSizes() { const ps = this.patchStatus; return ps && Array.isArray(ps.cpReses) ? ps.cpReses : CP_SIZES; }
+    canCpZoom(step) {
+        const ps = this.patchStatus;
+        if (!this.connectedPatch() || !ps || this.busy() || this.pending() || !ps.cpRes) {
+            return false;
+        }
+        const sizes = this._cpSizes(), i = sizes.indexOf(ps.cpRes) + step;
+        return i >= 0 && i < sizes.length;
+    }
+    cpZoom(step) {
+        if (this.canCpZoom(step)) {
+            const sizes = this._cpSizes();
+            this.patch.send({ cmd: 'cp-res', value: sizes[sizes.indexOf(this.patchStatus.cpRes) + step] });
+        }
+    }
+    /* "Zoom: 100 %" at the native size, "Zoom: 80 %" at 1360x600: how large the phone's text and map draw. */
+    cpZoomText() {
+        const ps = this.patchStatus;
+        if (!ps || !ps.cpRes) {
+            return t('Zoom: {0}', '—');
+        }
+        const pct = Math.round(1088 / parseInt(ps.cpRes, 10) * 100);
+        return t('Zoom: {0}', pct + ' %') + afterRestart(!!(ps.res && ps.res !== ps.cpRes));
     }
 
     /* Zoom out shows more map: a lower density, from the one on disk. */
@@ -1084,5 +1123,5 @@ class WazeClusterControl extends EventEmitter {
 module.exports = {
     WazeClusterControl, LineSocket,
     RENDER_PATH, PATCH_PATH, PENDING_PATH, AA_PENDING_PATH, BOOT_ID_PATH,
-    SIZE, SAFE, ZOOM_STEP, RESTART_FAILED, SHOWN_ON, HUD_SIZE_STEPS
+    SIZE, SAFE, CP_SIZES, safeFor, ZOOM_STEP, RESTART_FAILED, SHOWN_ON, HUD_SIZE_STEPS
 };

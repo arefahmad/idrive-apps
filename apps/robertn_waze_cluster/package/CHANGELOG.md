@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+Zoom for CarPlay's cluster map: Zoom out and Zoom in under CarPlay step the
+size the phone is told the cluster map has (1088x480, 1224x540, 1360x600 or
+1632x720, all at the map area's 138x61 mm), so Apple Maps and Google Maps
+draw more map with smaller text and turn card. The cluster gets the same
+1088x480 picture: the head unit's decoder scales it down. A change re-applies
+the patch and restarts CarPlay.
+
 ## 0.6.10
 
 Waze on cluster is renamed Maps on cluster, with its name translated in

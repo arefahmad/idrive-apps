@@ -567,6 +567,72 @@
             }
           ]
         },
+        "94": {
+          "type": "label",
+          "name": "wocCpZoom",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 0,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "Zoom: —",
+                "type": "Text"
+              }
+            }
+          ]
+        },
+        "95": {
+          "type": "button",
+          "name": "wocCpZoomOut",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "Zoom out",
+                "type": "Text"
+              }
+            }
+          ]
+        },
+        "96": {
+          "type": "button",
+          "name": "wocCpZoomIn",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "Zoom in",
+                "type": "Text"
+              }
+            }
+          ]
+        },
         "91": {
           "type": "label",
           "name": "wocHeadAa",
