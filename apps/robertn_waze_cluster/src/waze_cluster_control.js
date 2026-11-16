@@ -681,7 +681,7 @@ class WazeClusterControl extends EventEmitter {
         case 'starting':
             return t('Starting…');
         case 'showing':
-            return t('Showing {0}', rs.page || t('Waze map')) + (rs.reason ? ` — ${rs.reason}` : '');
+            return t('Showing {0}', rs.page || t('map')) + (rs.reason ? ` — ${rs.reason}` : '');
         case 'error':
             return t('Error');
         case 'frozen':
@@ -694,11 +694,12 @@ class WazeClusterControl extends EventEmitter {
     }
 
     /* A patch other than the one CarPlay's Patch button writes: another capture sink,
-     * panel, size or safe area, from an older app. */
+     * panel, size or safe area, from an older app, or the cluster map URL without
+     * the arrival-time card. */
     _outdated(ps) {
         const want = ps.cpRes || SIZE;
         return !!((ps.mode && ps.mode !== 'avb') || (ps.panel && ps.panel !== 'high') ||
-            (ps.res && ps.res !== want) || (ps.safe && ps.safe !== safeFor(want)));
+            (ps.res && ps.res !== want) || (ps.safe && ps.safe !== safeFor(want)) || ps.mapurl === 'no-eta');
     }
 
     /* ---- BMW's turn box ---- */
